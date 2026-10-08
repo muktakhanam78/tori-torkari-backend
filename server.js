@@ -40,6 +40,37 @@ app.post('/api/orders', (req,res) => {
 });
 
 app.get('/api/orders', (_, res) => res.json(orders));
+app.patch('/api/orders/:id/status', (req, res) => {
+  if (!process.env.ADMIN_KEY) {
+    return res.status(503).json({ error: 'Admin key is not configured' });
+  }
 
+  if (req.get('x-admin-key') !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const allowedStatuses = [
+    'pending',
+    'confirmed',
+    'processing',
+    'delivered',
+    'cancelled'
+  ];
+
+  const { status } = req.body;
+
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid order status' });
+  }
+
+  const order = orders.find(o => o.id === req.params.id);
+
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  order.status = status;
+  res.json(order);
+});
 const PORT = process.env.PORT || 4000;
 app.listen(PORT,'0.0.0.0', () => console.log(`API running on http://localhost:${PORT}`));
