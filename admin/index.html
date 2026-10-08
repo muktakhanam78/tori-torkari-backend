@@ -69,7 +69,93 @@ function show(page){
   el.innerHTML='<h2>Products — পণ্যের তালিকা</h2><table><tr><th>নাম</th><th>দাম</th><th>স্টক</th></tr>'+
   products.map(p=>`<tr><td>${p.emoji||''} ${p.name_bn||p.name||''}</td><td>${money(p.price)}</td><td>${p.stock??'—'}</td></tr>`).join('')+'</table>';
  }
- if(page==='orders'){
+```js
+if(page==='orders'){
+  el.innerHTML = `
+    <h2>Orders — অর্ডার পরিচালনা</h2>
+    <p>অর্ডারের অবস্থা পরিবর্তন করতে নিচের তালিকা ব্যবহার করুন।</p>
+    <table>
+      <tr>
+        <th>অর্ডার</th>
+        <th>গ্রাহক</th>
+        <th>মোট</th>
+        <th>Status</th>
+      </tr>
+      ${orders.map(o => `
+        <tr>
+          <td>${o.id}</td>
+          <td>${o.customer?.name || ''}</td>
+          <td>${money(o.total)}</td>
+          <td>
+            <select id="status-${o.id}">
+              <option value="pending" ${o.status==='pending'?'selected':''}>Pending</option>
+              <option value="confirmed" ${o.status==='confirmed'?'selected':''}>Confirmed</option>
+              <option value="processing" ${o.status==='processing'?'selected':''}>Processing</option>
+              <option value="delivered" ${o.status==='delivered'?'selected':''}>Delivered</option>
+              <option value="cancelled" ${o.status==='cancelled'?'selected':''}>Cancelled</option>
+            </select>
+            <button onclick="updateOrderStatus('${o.id}')">Save Status</button>
+          </td>
+        </tr>
+      `).join('')}
+    </table>
+    ${orders.length ? '' : '<p>এখনো কোনো অর্ডার নেই।</p>'}
+    <p id="status-message"></p>
+  `;
+}
+```
+
+এরপর কোডের নিচের দিকে `async function start()` লাইনের ঠিক আগে এই নতুন ফাংশনটি যোগ করুন:
+
+```js
+async function updateOrderStatus(id) {
+  const select = document.getElementById('status-' + id);
+  const message = document.getElementById('status-message');
+  const key = prompt('আপনার গোপন Admin Key লিখুন:');
+
+  if (!key) return;
+
+  try {
+    const response = await fetch(
+      API + '/api/orders/' + encodeURIComponent(id) + '/status',
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': key
+        },
+        body: JSON.stringify({ status: select.value })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Status পরিবর্তন করা যায়নি');
+    }
+
+    const index = orders.findIndex(o => o.id === id);
+    if (index !== -1) orders[index] = data;
+
+    message.textContent = 'অর্ডারের Status সফলভাবে পরিবর্তন হয়েছে।';
+    show('orders');
+  } catch (error) {
+    message.textContent = 'সমস্যা: ' + error.message;
+  }
+}
+```
+
+## ধাপ ৫: সংরক্ষণ করুন
+
+১. **Commit changes** চাপুন।
+২. পরিবর্তন নিশ্চিত করে আবার **Commit changes** চাপুন।
+৩. Netlify Deploy শেষ হওয়া পর্যন্ত অপেক্ষা করুন।
+
+তারপর Admin Panel খুলে **Orders** পেজ পরীক্ষা করুন।
+
+**মনে রাখবেন:** Admin Key কখনো কোডের মধ্যে লিখবেন না। আর আপনার বর্তমান Backend-এ অর্ডারগুলো মেমরিতে থাকে, তাই Backend পুনরায় চালু হলে সেগুলো হারাতে পারে। বাস্তব ব্যবহারের আগে স্থায়ী ডেটাবেসও যোগ করা দরকার।
+
+কোড সংরক্ষণ হয়ে গেলে আমাকে **“হয়েছে”** লিখুন।
   el.innerHTML='<h2>Orders — অর্ডারের তালিকা</h2><table><tr><th>অর্ডার</th><th>গ্রাহক</th><th>মোট</th><th>অবস্থা</th></tr>'+
   orders.map(o=>`<tr><td>${o.id}</td><td>${o.customer?.name||''}</td><td>${money(o.total)}</td><td>${o.status||''}</td></tr>`).join('')+'</table>'+
   (orders.length?'':'<p>এখনো কোনো অর্ডার নেই।</p>');
