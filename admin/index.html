@@ -1,0 +1,95 @@
+```html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>তরি তরকারি - Admin Panel</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f3f6f3;color:#203326}
+header{background:#176b3a;color:white;padding:20px}
+header h2{margin:0 0 8px}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}
+button{border:0;padding:11px 15px;border-radius:7px;cursor:pointer;background:#21864b;color:white}
+nav button{background:white;color:#176b3a;font-weight:bold}
+main{padding:20px;max-width:1000px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.card,section{background:white;padding:18px;border-radius:10px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
+.number{font-size:26px;font-weight:bold;color:#176b3a}
+table{width:100%;border-collapse:collapse;background:white}
+th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}
+input,select{padding:10px;margin:5px 0;width:100%;max-width:400px;box-sizing:border-box}
+.notice{color:#8b4a00}
+</style>
+</head>
+<body>
+<header>
+<h2>🥬 তরি তরকারি</h2>
+<div>Admin Panel — প্রশাসনিক ড্যাশবোর্ড</div>
+<nav>
+<button onclick="show('dashboard')">Dashboard</button>
+<button onclick="show('products')">Products</button>
+<button onclick="show('orders')">Orders</button>
+<button onclick="show('customers')">Customers</button>
+<button onclick="show('sellers')">Sellers</button>
+<button onclick="show('sales')">Sales & Commission</button>
+</nav>
+</header>
+<main>
+<div id="content">লোড হচ্ছে...</div>
+</main>
+<script>
+const API='https://tori-torkari-backend-1.onrender.com';
+let products=[],orders=[];
+const money=n=>'৳'+Number(n||0).toLocaleString('bn-BD');
+
+async function load(){
+ try{
+  const r=await Promise.all([
+   fetch(API+'/api/products'),fetch(API+'/api/orders')
+  ]);
+  if(!r[0].ok||!r[1].ok)throw Error('API error');
+  products=await r[0].json();orders=await r[1].json();
+ }catch(e){
+  document.getElementById('content').innerHTML=
+   '<p class="notice">Backend থেকে তথ্য আনা যায়নি। Render-এর API পরীক্ষা করুন।</p>';
+ }
+}
+function show(page){
+ const el=document.getElementById('content');
+ if(page==='dashboard'){
+  el.innerHTML=`<h2>Dashboard</h2><div class="cards">
+  <div class="card">মোট পণ্য<div class="number">${products.length}</div></div>
+  <div class="card">মোট অর্ডার<div class="number">${orders.length}</div></div>
+  <div class="card">মোট বিক্রি<div class="number">${money(orders.reduce((s,o)=>s+Number(o.total||0),0))}</div></div>
+  <div class="card">বাকি অর্ডার<div class="number">${orders.filter(o=>o.status==='pending').length}</div></div>
+  </div><p class="notice">এটি প্রাথমিক Admin Panel।</p>`;
+ }
+ if(page==='products'){
+  el.innerHTML='<h2>Products — পণ্যের তালিকা</h2><table><tr><th>নাম</th><th>দাম</th><th>স্টক</th></tr>'+
+  products.map(p=>`<tr><td>${p.emoji||''} ${p.name_bn||p.name||''}</td><td>${money(p.price)}</td><td>${p.stock??'—'}</td></tr>`).join('')+'</table>';
+ }
+ if(page==='orders'){
+  el.innerHTML='<h2>Orders — অর্ডারের তালিকা</h2><table><tr><th>অর্ডার</th><th>গ্রাহক</th><th>মোট</th><th>অবস্থা</th></tr>'+
+  orders.map(o=>`<tr><td>${o.id}</td><td>${o.customer?.name||''}</td><td>${money(o.total)}</td><td>${o.status||''}</td></tr>`).join('')+'</table>'+
+  (orders.length?'':'<p>এখনো কোনো অর্ডার নেই।</p>');
+ }
+ if(page==='customers'){
+  const cs=[...new Map(orders.filter(o=>o.customer).map(o=>[o.customer.phone,o.customer])).values()];
+  el.innerHTML='<h2>Customers — গ্রাহক তালিকা</h2><table><tr><th>নাম</th><th>ফোন</th><th>ঠিকানা</th></tr>'+
+  cs.map(c=>`<tr><td>${c.name||''}</td><td>${c.phone||''}</td><td>${c.address||''}</td></tr>`).join('')+'</table><p>অর্ডার করা গ্রাহকদের তথ্য এখানে দেখানো হয়।</p>';
+ }
+ if(page==='sellers'){
+  el.innerHTML='<h2>Sellers — বিক্রেতা</h2><p>বিক্রেতা নিবন্ধন ও পরিচালনার Backend এখনো যোগ করা হয়নি।</p>';
+ }
+ if(page==='sales'){
+  const total=orders.reduce((s,o)=>s+Number(o.total||0),0);
+  el.innerHTML=`<h2>Sales & Commission</h2><section>মোট অর্ডারের মূল্য: <b>${money(total)}</b><p>কমিশন হার এখনো নির্ধারিত নয়; তাই কমিশন গণনা করা হচ্ছে না।</p></section>`;
+ }
+}
+async function start(){await load();show('dashboard')}
+start();
+</script>
+</body>
+</html>
+```
